@@ -1,15 +1,19 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Plus, Trash2, Zap, Eye, ChevronDown, ChevronUp, Pencil, Check, X, ArrowUp, Star } from "lucide-react"
+import { Plus, Trash2, Zap, Eye, ChevronDown, ChevronUp, Pencil, Check, X, ArrowUp, Star, Crown, Timer } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSound } from "@/hooks/use-sound"
+
+export type AbilityType = "passive" | "active"
+export type AbilityCategory = "principal" | "por_turno" | "nenhuma"
 
 export interface Ability {
   id: string
   name: string
   description: string
-  type: "passive" | "active"
+  type: AbilityType
+  category: AbilityCategory
   level: number
 }
 
@@ -22,12 +26,14 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
   const [isExpanded, setIsExpanded] = useState(false)
   const [newName, setNewName] = useState("")
   const [newDesc, setNewDesc] = useState("")
-  const [newType, setNewType] = useState<"passive" | "active">("active")
+  const [newType, setNewType] = useState<AbilityType>("active")
+  const [newCategory, setNewCategory] = useState<AbilityCategory>("nenhuma")
   const [newLevel, setNewLevel] = useState(1)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
   const [editDesc, setEditDesc] = useState("")
-  const [editType, setEditType] = useState<"passive" | "active">("active")
+  const [editType, setEditType] = useState<AbilityType>("active")
+  const [editCategory, setEditCategory] = useState<AbilityCategory>("nenhuma")
   const [editLevel, setEditLevel] = useState(1)
   const [showForm, setShowForm] = useState(false)
   const [recentlyAdded, setRecentlyAdded] = useState<string | null>(null)
@@ -41,6 +47,7 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
       name: newName.trim(),
       description: newDesc.trim(),
       type: newType,
+      category: newCategory,
       level: newLevel,
     }
     onAbilitiesChange([...abilities, ability])
@@ -50,9 +57,10 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
     setNewName("")
     setNewDesc("")
     setNewType("active")
+    setNewCategory("nenhuma")
     setNewLevel(1)
     setShowForm(false)
-  }, [newName, newDesc, newType, newLevel, abilities, onAbilitiesChange, play])
+  }, [newName, newDesc, newType, newCategory, newLevel, abilities, onAbilitiesChange, play])
 
   const removeAbility = useCallback((id: string) => {
     play("abilityRemove")
@@ -85,6 +93,7 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
     setEditName(ability.name)
     setEditDesc(ability.description)
     setEditType(ability.type)
+    setEditCategory(ability.category ?? "nenhuma")
     setEditLevel(ability.level)
   }, [play])
 
@@ -94,17 +103,242 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
     onAbilitiesChange(
       abilities.map((a) =>
         a.id === editingId
-          ? { ...a, name: editName.trim(), description: editDesc.trim(), type: editType, level: editLevel }
+          ? { ...a, name: editName.trim(), description: editDesc.trim(), type: editType, category: editCategory, level: editLevel }
           : a
       )
     )
     setEditingId(null)
-  }, [editingId, editName, editDesc, editType, editLevel, abilities, onAbilitiesChange, play])
+  }, [editingId, editName, editDesc, editType, editCategory, editLevel, abilities, onAbilitiesChange, play])
 
   const cancelEdit = useCallback(() => {
     play("click")
     setEditingId(null)
   }, [play])
+
+  // Group abilities by category
+  const principalAbilities = abilities.filter((a) => (a.category ?? "nenhuma") === "principal")
+  const porTurnoAbilities = abilities.filter((a) => (a.category ?? "nenhuma") === "por_turno")
+  const otherAbilities = abilities.filter((a) => (a.category ?? "nenhuma") === "nenhuma")
+
+  const categoryConfig: { key: AbilityCategory; label: string; icon: React.ReactNode; borderColor: string; bgColor: string; textColor: string; iconBg: string }[] = [
+    { key: "principal", label: "Habilidades Principais", icon: <Crown className="h-4 w-4" />, borderColor: "border-yellow-500/30", bgColor: "bg-yellow-500/5", textColor: "text-yellow-400", iconBg: "bg-yellow-500/15" },
+    { key: "por_turno", label: "Habilidades por Turno", icon: <Timer className="h-4 w-4" />, borderColor: "border-violet-500/30", bgColor: "bg-violet-500/5", textColor: "text-violet-400", iconBg: "bg-violet-500/15" },
+    { key: "nenhuma", label: "Outras Habilidades", icon: <Zap className="h-4 w-4" />, borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5", textColor: "text-amber-400", iconBg: "bg-amber-500/15" },
+  ]
+
+  const groupedAbilities: { key: AbilityCategory; abilities: Ability[] }[] = [
+    { key: "principal", abilities: principalAbilities },
+    { key: "por_turno", abilities: porTurnoAbilities },
+    { key: "nenhuma", abilities: otherAbilities },
+  ]
+
+  const renderAbilityCard = (ability: Ability) => (
+    <div
+      key={ability.id}
+      className={cn(
+        "group rounded-xl border p-3 transition-all",
+        ability.type === "passive"
+          ? "border-cyan-500/20 bg-cyan-500/5"
+          : "border-orange-500/20 bg-orange-500/5",
+        recentlyAdded === ability.id && "[animation:item-appear_0.5s_ease-out]",
+        levelUpId === ability.id && "[animation:heal-flash_0.5s_ease-out]"
+      )}
+    >
+      {editingId === ability.id ? (
+        /* Edit mode */
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="w-full rounded-lg border border-border/30 bg-secondary/50 px-3 py-1.5 text-sm font-bold text-foreground outline-none"
+            autoFocus
+          />
+          <textarea
+            value={editDesc}
+            onChange={(e) => setEditDesc(e.target.value)}
+            rows={2}
+            className="w-full resize-none rounded-lg border border-border/30 bg-secondary/50 px-3 py-1.5 text-xs text-foreground outline-none"
+            placeholder="Descricao..."
+          />
+          {/* Type selector */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setEditType("active")}
+                className={cn(
+                  "rounded-lg border px-2 py-1 text-xs font-bold transition-all",
+                  editType === "active"
+                    ? "border-orange-500/40 bg-orange-500/20 text-orange-300"
+                    : "border-border/30 bg-secondary/30 text-muted-foreground"
+                )}
+              >
+                Ativavel
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditType("passive")}
+                className={cn(
+                  "rounded-lg border px-2 py-1 text-xs font-bold transition-all",
+                  editType === "passive"
+                    ? "border-cyan-500/40 bg-cyan-500/20 text-cyan-300"
+                    : "border-border/30 bg-secondary/30 text-muted-foreground"
+                )}
+              >
+                Passiva
+              </button>
+            </div>
+          </div>
+          {/* Category selector in edit mode */}
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mr-1">Categoria:</span>
+            <button
+              type="button"
+              onClick={() => setEditCategory("principal")}
+              className={cn(
+                "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold transition-all",
+                editCategory === "principal"
+                  ? "border-yellow-500/40 bg-yellow-500/20 text-yellow-300"
+                  : "border-border/30 bg-secondary/30 text-muted-foreground"
+              )}
+            >
+              <Crown className="h-3 w-3" />
+              Principal
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditCategory("por_turno")}
+              className={cn(
+                "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold transition-all",
+                editCategory === "por_turno"
+                  ? "border-violet-500/40 bg-violet-500/20 text-violet-300"
+                  : "border-border/30 bg-secondary/30 text-muted-foreground"
+              )}
+            >
+              <Timer className="h-3 w-3" />
+              Por Turno
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditCategory("nenhuma")}
+              className={cn(
+                "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold transition-all",
+                editCategory === "nenhuma"
+                  ? "border-amber-500/40 bg-amber-500/20 text-amber-300"
+                  : "border-border/30 bg-secondary/30 text-muted-foreground"
+              )}
+            >
+              <Zap className="h-3 w-3" />
+              Outra
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Level editor in edit mode */}
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 text-amber-400" />
+              <input
+                type="number"
+                min="1"
+                max="99"
+                value={editLevel}
+                onChange={(e) => setEditLevel(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                className="w-12 rounded-md border border-amber-500/30 bg-secondary/50 px-1 py-0.5 text-center text-xs font-bold text-amber-300 outline-none"
+              />
+            </div>
+            <div className="ml-auto flex gap-1">
+              <button
+                type="button"
+                onClick={saveEdit}
+                className="rounded-lg border border-emerald-500/30 bg-emerald-500/20 p-1.5 text-emerald-300 transition-all active:scale-95"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="rounded-lg border border-border/30 bg-secondary/30 p-1.5 text-muted-foreground transition-all active:scale-95"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* View mode */
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+              ability.type === "passive"
+                ? "bg-cyan-500/20 text-cyan-400"
+                : "bg-orange-500/20 text-orange-400"
+            )}
+          >
+            {ability.type === "passive" ? <Eye className="h-3.5 w-3.5" /> : <Zap className="h-3.5 w-3.5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-bold text-foreground">{ability.name}</span>
+              <span
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                  ability.type === "passive"
+                    ? "bg-cyan-500/20 text-cyan-400"
+                    : "bg-orange-500/20 text-orange-400"
+                )}
+              >
+                {ability.type === "passive" ? "Passiva" : "Ativavel"}
+              </span>
+              {/* Level badge */}
+              <span className="flex items-center gap-0.5 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                <Star className="h-2.5 w-2.5" />
+                Nv.{ability.level}
+              </span>
+            </div>
+            {ability.description && (
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                {ability.description}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => levelDownAbility(ability.id)}
+              disabled={ability.level <= 1}
+              className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-30"
+              title="Diminuir nivel"
+            >
+              <ArrowUp className="h-3.5 w-3.5 rotate-180" />
+            </button>
+            <button
+              type="button"
+              onClick={() => levelUpAbility(ability.id)}
+              className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-amber-500/10 hover:text-amber-400"
+              title="Aumentar nivel"
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => startEdit(ability)}
+              className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-secondary/50 hover:text-foreground"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => removeAbility(ability.id)}
+              className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-rose-500/10 hover:text-rose-400"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all">
@@ -139,181 +373,43 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
       <div
         className={cn(
           "overflow-hidden transition-all duration-500",
-          isExpanded ? "mt-4 max-h-[4000px] opacity-100" : "max-h-0 opacity-0"
+          isExpanded ? "mt-4 max-h-[6000px] opacity-100" : "max-h-0 opacity-0"
         )}
       >
-        {/* Ability list */}
-        <div className="space-y-2">
-          {abilities.map((ability) => (
-            <div
-              key={ability.id}
-              className={cn(
-                "group rounded-xl border p-3 transition-all",
-                ability.type === "passive"
-                  ? "border-cyan-500/20 bg-cyan-500/5"
-                  : "border-orange-500/20 bg-orange-500/5",
-                recentlyAdded === ability.id && "[animation:item-appear_0.5s_ease-out]",
-                levelUpId === ability.id && "[animation:heal-flash_0.5s_ease-out]"
-              )}
-            >
-              {editingId === ability.id ? (
-                /* Edit mode */
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="w-full rounded-lg border border-border/30 bg-secondary/50 px-3 py-1.5 text-sm font-bold text-foreground outline-none"
-                    autoFocus
-                  />
-                  <textarea
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                    rows={2}
-                    className="w-full resize-none rounded-lg border border-border/30 bg-secondary/50 px-3 py-1.5 text-xs text-foreground outline-none"
-                    placeholder="Descricao..."
-                  />
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditType("active")}
-                        className={cn(
-                          "rounded-lg border px-2 py-1 text-xs font-bold transition-all",
-                          editType === "active"
-                            ? "border-orange-500/40 bg-orange-500/20 text-orange-300"
-                            : "border-border/30 bg-secondary/30 text-muted-foreground"
-                        )}
-                      >
-                        Ativavel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditType("passive")}
-                        className={cn(
-                          "rounded-lg border px-2 py-1 text-xs font-bold transition-all",
-                          editType === "passive"
-                            ? "border-cyan-500/40 bg-cyan-500/20 text-cyan-300"
-                            : "border-border/30 bg-secondary/30 text-muted-foreground"
-                        )}
-                      >
-                        Passiva
-                      </button>
+        {/* Grouped ability sections */}
+        {abilities.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <Zap className="h-8 w-8 text-muted-foreground/20" />
+            <p className="text-xs text-muted-foreground/50">Nenhuma habilidade adicionada</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {groupedAbilities.map(({ key, abilities: groupAbilities }) => {
+              if (groupAbilities.length === 0) return null
+              const config = categoryConfig.find((c) => c.key === key)!
+              return (
+                <div key={key} className={cn("rounded-xl border p-3", config.borderColor, config.bgColor)}>
+                  {/* Section header */}
+                  <div className="mb-2.5 flex items-center gap-2">
+                    <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", config.iconBg, config.textColor)}>
+                      {config.icon}
                     </div>
-                    {/* Level editor in edit mode */}
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3 w-3 text-amber-400" />
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={editLevel}
-                        onChange={(e) => setEditLevel(Math.max(1, Number.parseInt(e.target.value) || 1))}
-                        className="w-12 rounded-md border border-amber-500/30 bg-secondary/50 px-1 py-0.5 text-center text-xs font-bold text-amber-300 outline-none"
-                      />
-                    </div>
-                    <div className="ml-auto flex gap-1">
-                      <button
-                        type="button"
-                        onClick={saveEdit}
-                        className="rounded-lg border border-emerald-500/30 bg-emerald-500/20 p-1.5 text-emerald-300 transition-all active:scale-95"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEdit}
-                        className="rounded-lg border border-border/30 bg-secondary/30 p-1.5 text-muted-foreground transition-all active:scale-95"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                    <h4 className={cn("text-xs font-bold uppercase tracking-wider", config.textColor)}>
+                      {config.label}
+                    </h4>
+                    <span className="ml-auto rounded-md bg-secondary/30 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                      {groupAbilities.length}
+                    </span>
+                  </div>
+                  {/* Abilities in this group */}
+                  <div className="space-y-2">
+                    {groupAbilities.map(renderAbilityCard)}
                   </div>
                 </div>
-              ) : (
-                /* View mode */
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-                      ability.type === "passive"
-                        ? "bg-cyan-500/20 text-cyan-400"
-                        : "bg-orange-500/20 text-orange-400"
-                    )}
-                  >
-                    {ability.type === "passive" ? <Eye className="h-3.5 w-3.5" /> : <Zap className="h-3.5 w-3.5" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-foreground">{ability.name}</span>
-                      <span
-                        className={cn(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                          ability.type === "passive"
-                            ? "bg-cyan-500/20 text-cyan-400"
-                            : "bg-orange-500/20 text-orange-400"
-                        )}
-                      >
-                        {ability.type === "passive" ? "Passiva" : "Ativavel"}
-                      </span>
-                      {/* Level badge */}
-                      <span className="flex items-center gap-0.5 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
-                        <Star className="h-2.5 w-2.5" />
-                        Nv.{ability.level}
-                      </span>
-                    </div>
-                    {ability.description && (
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                        {ability.description}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    {/* Level up/down */}
-                    <button
-                      type="button"
-                      onClick={() => levelDownAbility(ability.id)}
-                      disabled={ability.level <= 1}
-                      className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-30"
-                      title="Diminuir nivel"
-                    >
-                      <ArrowUp className="h-3.5 w-3.5 rotate-180" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => levelUpAbility(ability.id)}
-                      className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-amber-500/10 hover:text-amber-400"
-                      title="Aumentar nivel"
-                    >
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(ability)}
-                      className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-secondary/50 hover:text-foreground"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeAbility(ability.id)}
-                      className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-rose-500/10 hover:text-rose-400"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {abilities.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-6 text-center">
-              <Zap className="h-8 w-8 text-muted-foreground/20" />
-              <p className="text-xs text-muted-foreground/50">Nenhuma habilidade adicionada</p>
-            </div>
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* Add ability form */}
         {showForm ? (
@@ -337,7 +433,9 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
               rows={2}
               className="w-full resize-none rounded-lg border border-border/30 bg-secondary/50 px-3 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-amber-500/30"
             />
+            {/* Type selector */}
             <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Tipo:</span>
               <div className="flex gap-1">
                 <button
                   type="button"
@@ -364,7 +462,52 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
                   Passiva
                 </button>
               </div>
-              {/* Level input */}
+            </div>
+            {/* Category selector */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mr-0.5">Categoria:</span>
+              <button
+                type="button"
+                onClick={() => setNewCategory("principal")}
+                className={cn(
+                  "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all",
+                  newCategory === "principal"
+                    ? "border-yellow-500/40 bg-yellow-500/20 text-yellow-300"
+                    : "border-border/30 bg-secondary/30 text-muted-foreground hover:bg-secondary/50"
+                )}
+              >
+                <Crown className="h-3 w-3" />
+                Principal
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewCategory("por_turno")}
+                className={cn(
+                  "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all",
+                  newCategory === "por_turno"
+                    ? "border-violet-500/40 bg-violet-500/20 text-violet-300"
+                    : "border-border/30 bg-secondary/30 text-muted-foreground hover:bg-secondary/50"
+                )}
+              >
+                <Timer className="h-3 w-3" />
+                Por Turno
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewCategory("nenhuma")}
+                className={cn(
+                  "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all",
+                  newCategory === "nenhuma"
+                    ? "border-amber-500/40 bg-amber-500/20 text-amber-300"
+                    : "border-border/30 bg-secondary/30 text-muted-foreground hover:bg-secondary/50"
+                )}
+              >
+                <Zap className="h-3 w-3" />
+                Outra
+              </button>
+            </div>
+            {/* Level + action buttons */}
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1">
                 <Star className="h-3 w-3 text-amber-400" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Nv.</span>
@@ -380,7 +523,7 @@ export function AbilitiesPanel({ abilities, onAbilitiesChange }: AbilitiesPanelP
               <div className="ml-auto flex gap-1.5">
                 <button
                   type="button"
-                  onClick={() => { play("click"); setShowForm(false); setNewName(""); setNewDesc("") }}
+                  onClick={() => { play("click"); setShowForm(false); setNewName(""); setNewDesc(""); setNewCategory("nenhuma") }}
                   className="rounded-lg border border-border/30 bg-secondary/30 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-all hover:bg-secondary/50"
                 >
                   Cancelar
