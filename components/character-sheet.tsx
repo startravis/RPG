@@ -413,21 +413,13 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
           </button>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-3">
-              <input
-                type="text"
-                placeholder="Nome do Personagem"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent font-display text-xl font-bold tracking-wide text-foreground outline-none placeholder:text-muted-foreground/50 md:text-2xl"
-              />
-              <ClassEffectBadge
-                characterClass={characterClass}
-                onClassChange={setCharacterClass}
-                effect={classEffect}
-                onEffectChange={setClassEffect}
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Nome do Personagem"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-transparent font-display text-xl font-bold tracking-wide text-foreground outline-none placeholder:text-muted-foreground/50 md:text-2xl"
+            />
             <div className="mt-0.5 flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <Sparkles className="h-3 w-3 text-muted-foreground/50" />
@@ -449,8 +441,17 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
               </button>
             </div>
           </div>
+        </div>
 
-          <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+        {/* Centered class + actions bar */}
+        <div className="relative z-10 mb-4 flex items-center justify-center gap-4 rounded-xl border border-border/30 bg-secondary/20 px-4 py-2">
+          <ClassEffectBadge
+            characterClass={characterClass}
+            onClassChange={setCharacterClass}
+            effect={classEffect}
+            onEffectChange={setClassEffect}
+          />
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={resetAll}
