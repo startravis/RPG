@@ -8,6 +8,7 @@ import { AbilitiesPanel, type Ability } from "./abilities-panel"
 import { AttributesPanel, type Attributes } from "./attributes-panel"
 import { InventoryPanel, type InventoryItem } from "./inventory-panel"
 import { NotesPanel } from "./notes-panel"
+import { ClassEffectBadge, type ClassEffect } from "./class-effect-badge"
 import { AvatarEditor } from "./avatar-editor"
 import { RotateCcw, Sparkles, Camera, UserCircle2, Dna, Save, ChevronDown, ChevronUp, Trash2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -42,6 +43,8 @@ interface EvolutionData {
 export interface CharacterSaveData {
   id: string
   name: string
+  characterClass: string
+  classEffect: ClassEffect
   avatar: string | null
   characterLevel: number
   attributes: Attributes
@@ -94,6 +97,8 @@ const defaultMentalBars: BarsState = {
 
 export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetProps>(function CharacterSheet({ id, onRemove, initialDelay = 0 }, ref) {
   const [name, setName] = useState("")
+  const [characterClass, setCharacterClass] = useState("")
+  const [classEffect, setClassEffect] = useState<ClassEffect>("none")
   const [avatar, setAvatar] = useState<string | null>(null)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
   const [rawAvatarSrc, setRawAvatarSrc] = useState<string | null>(null)
@@ -186,6 +191,8 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
     getData: (): CharacterSaveData => ({
       id,
       name,
+      characterClass,
+      classEffect,
       avatar,
       characterLevel,
       attributes,
@@ -212,6 +219,8 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
     }),
     loadData: (data: CharacterSaveData) => {
       setName(data.name ?? "")
+      setCharacterClass(data.characterClass ?? "")
+      setClassEffect(data.classEffect ?? "none")
       setAvatar(data.avatar ?? null)
       setCharacterLevel(data.characterLevel ?? 1)
       setAttributes(data.attributes ?? { chamativo: 0, esperteza: 0, sorrateiro: 0, rapidez: 0, potente: 0, cuidadoso: 0 })
@@ -404,13 +413,21 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
           </button>
 
           <div className="min-w-0 flex-1">
-            <input
-              type="text"
-              placeholder="Nome do Personagem"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-transparent font-display text-xl font-bold tracking-wide text-foreground outline-none placeholder:text-muted-foreground/50 md:text-2xl"
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                placeholder="Nome do Personagem"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent font-display text-xl font-bold tracking-wide text-foreground outline-none placeholder:text-muted-foreground/50 md:text-2xl"
+              />
+              <ClassEffectBadge
+                characterClass={characterClass}
+                onClassChange={setCharacterClass}
+                effect={classEffect}
+                onEffectChange={setClassEffect}
+              />
+            </div>
             <div className="mt-0.5 flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <Sparkles className="h-3 w-3 text-muted-foreground/50" />
