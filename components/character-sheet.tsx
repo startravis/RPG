@@ -119,11 +119,10 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
   const [mentalExtraActive, setMentalExtraActive] = useState(false)
 
   // Auto-calculate HP bar maxes from Potente attribute
-  // Leve = potente * 3 (x15 after level 10), Moderada = leve * 2, Severa = moderada * 2
+  // Leve = potente * 15 (at level >= 10) or potente * 3 (below level 10), Moderada = leve * 2, Severa = moderada * 2
   useEffect(() => {
     const potente = attributes.potente
-    const leveBase = potente * 3
-    const leveMax = characterLevel > 10 ? leveBase * 15 : leveBase
+    const leveMax = characterLevel >= 10 ? potente * 15 : potente * 3
     const moderadaMax = leveMax * 2
     const severaMax = moderadaMax * 2
     setHpBars((prev) => ({
@@ -135,11 +134,10 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
   }, [attributes.potente, characterLevel])
 
   // Auto-calculate Mental bar maxes from Mentalidade (esperteza)
-  // Same formula: Leve = esperteza * 3 (x15 after level 10), Moderada = leve * 2, Severa = moderada * 2
+  // Leve = esperteza * 3, Moderada = leve * 2, Severa = moderada * 2
   useEffect(() => {
     const esperteza = attributes.esperteza
-    const leveBase = esperteza * 3
-    const leveMax = characterLevel > 10 ? leveBase * 15 : leveBase
+    const leveMax = esperteza * 3
     const moderadaMax = leveMax * 2
     const severaMax = moderadaMax * 2
     setMentalBars((prev) => ({
@@ -148,7 +146,7 @@ export const CharacterSheet = forwardRef<CharacterSheetHandle, CharacterSheetPro
       severa: { current: Math.min(prev.severa.current, severaMax), max: severaMax },
       extra: prev.extra,
     }))
-  }, [attributes.esperteza, characterLevel])
+  }, [attributes.esperteza])
 
   // Cursed Energy (toggleable)
   const [cursedEnergy, setCursedEnergy] = useState(75)
